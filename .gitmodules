@@ -1,0 +1,6 @@
+[submodule "ThirdParty/SDL"]
+	path = ThirdParty/SDL
+	url = https://github.com/libsdl-org/SDL.git
+[submodule "ThirdParty/vk-bootstrap"]
+	path = ThirdParty/vk-bootstrap
+	url = https://github.com/charles-lunarg/vk-bootstrap.git
