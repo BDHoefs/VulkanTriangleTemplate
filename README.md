@@ -1,5 +1,7 @@
 # VulkanTriangleTemplate
 
+![alt text](https://raw.githubusercontent.com/BDHoefs/VulkanTriangleTemplate/master/Images/Screenshot.jpg)
+
 ## About
 This is a small template application that renders a rotating triangle with the Vulkan API.
 It is intended to be structured so that it can be used as a base for more sophisticated projects
