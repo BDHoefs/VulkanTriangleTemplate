@@ -1,4 +1,4 @@
-# VulkanTriangleTemplate
+# Vulkan Triangle Template
 
 ![alt text](https://raw.githubusercontent.com/BDHoefs/VulkanTriangleTemplate/master/Images/Screenshot.jpg)
 
@@ -16,7 +16,7 @@ It should work on all platforms which support SDL and Vulkan, though it has only
 so far. But any problems getting it up and running should be minor.
 
 ## Quick note on building
-This project uses submodules to manage its thirdparty dependencies so make sure to 
+This project uses submodules to manage its third party dependencies so make sure to 
 
 ```
 git submodule init
