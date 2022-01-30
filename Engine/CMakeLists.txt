@@ -3,16 +3,16 @@ find_package(Vulkan REQUIRED)
 set(SOURCES
 	Application.cpp
 	Application.hpp
-	Renderer.cpp
-	Renderer.hpp
-	VulkanInitializers.cpp
-	VulkanInitializers.hpp
+	Camera.hpp
 	Mesh.cpp
 	Mesh.hpp
-	VulkanTypes.hpp
-	Camera.hpp
 	Transform.hpp
+
+	ECS/ECS.cpp
+	ECS/ECS.hpp
 )
+
+add_subdirectory(Renderer)
 
 add_library(Engine ${SOURCES})
 

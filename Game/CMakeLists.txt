@@ -2,12 +2,12 @@ set(SOURCES
 	Main.cpp
 )
 
-add_executable(VulkanTriangle ${SOURCES})
+add_executable(Frontier ${SOURCES})
 
-target_link_libraries(VulkanTriangle Engine)
+target_link_libraries(Frontier Engine)
 
 add_custom_command(
-	TARGET VulkanTriangle
+	TARGET Frontier
 	POST_BUILD
 	COMMAND
 	${CMAKE_COMMAND} -E copy_directory

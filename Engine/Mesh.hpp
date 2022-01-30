@@ -6,7 +6,7 @@
 #include <ThirdParty/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-#include <VulkanTypes.hpp>
+#include <Renderer/VulkanTypes.hpp>
 
 struct VertexInputDescription {
     std::vector<VkVertexInputBindingDescription> bindings;
@@ -25,7 +25,7 @@ struct Vertex {
 
 class Mesh {
 public:
-    std::vector<Vertex> getVertices();
+    const std::vector<Vertex>& getVertices();
     void set_vertices(std::vector<Vertex> vertices);
 
     void cleanup();

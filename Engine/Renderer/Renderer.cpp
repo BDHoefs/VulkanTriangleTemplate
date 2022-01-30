@@ -6,48 +6,7 @@
 #include <SDL_vulkan.h>
 #include <ThirdParty/glm/gtx/transform.hpp>
 
-#include <VulkanInitializers.hpp>
-
-void RenderObject::record_draw_commands(VkCommandBuffer cmd, RenderData& renderData, glm::mat4 view, glm::mat4 projection)
-{
-    if (mesh == nullptr)
-        return;
-
-    if (mesh->m_needsUpload) {
-        throw std::runtime_error("recordDrawCommands() called on a RenderObject with a mesh yet to be uploaded");
-    }
-
-    glm::mat4 model(1.0f);
-    if (transform != nullptr) {
-        model = transform->getTransform();
-    }
-
-    GPUCameraData camData;
-    camData.proj = projection;
-    camData.view = view;
-
-    void* data;
-    vmaMapMemory(renderData.allocator, renderData.cameraData[renderData.frameIndex].allocation, &data);
-    memcpy(data, &camData, sizeof(GPUCameraData));
-    vmaUnmapMemory(renderData.allocator, renderData.cameraData[renderData.frameIndex].allocation);
-
-    vmaMapMemory(renderData.allocator, renderData.sceneData[renderData.frameIndex].allocation, &data);
-    data = (void*)((char*)data + index * sizeof(glm::mat4));
-    memcpy(data, &model, sizeof(glm::mat4));
-    vmaUnmapMemory(renderData.allocator, renderData.sceneData[renderData.frameIndex].allocation);
-
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, renderData.pipelineLayout,
-        0, 1, &renderData.globalDescriptor[renderData.frameIndex], 0, nullptr);
-
-    MeshPushConstants constants;
-    constants.index = index;
-
-    vkCmdPushConstants(cmd, renderData.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
-
-    VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers(cmd, 0, 1, &mesh->m_buffer.buffer, &offset);
-    vkCmdDraw(cmd, mesh->m_vertices.size(), 1, 0, 0);
-}
+#include <Renderer/VulkanInitializers.hpp>
 
 void Renderer::init()
 {
@@ -70,8 +29,6 @@ void Renderer::init()
 
 void Renderer::update()
 {
-    m_renderObjects[0].transform->rot = glm::vec3(0.0f, m_renderData.frameNumber * 0.4f, 0.0f);
-
     int w, h;
     SDL_GetWindowSize(m_window, &w, &h);
     if (w != m_renderData.windowSize.width || h != m_renderData.windowSize.height) {
@@ -197,6 +154,10 @@ void Renderer::update()
 void Renderer::exit()
 {
     vkDeviceWaitIdle(m_device);
+    m_em.each_component<Mesh>([this](ECS::Entity& e, Mesh* m) {
+        m->cleanup();
+    });
+
     for (auto& f : m_cleanupQueue) {
         f();
     }
@@ -397,20 +358,6 @@ void Renderer::create_render_pass()
 
 void Renderer::prepare_resources()
 {
-    std::shared_ptr<Mesh> triangle = std::make_shared<Mesh>();
-    std::vector<Vertex> triVerts(3);
-    triVerts[0].pos = glm::vec3(1.f, 1.f, 0.f);
-    triVerts[1].pos = glm::vec3(-1.f, 1.f, 0.f);
-    triVerts[2].pos = glm::vec3(0.f, -1.f, 0.f);
-
-    triVerts[0].color = glm::vec3(1.f, 0.f, 0.f);
-    triVerts[1].color = glm::vec3(0.f, 1.f, 0.f);
-    triVerts[2].color = glm::vec3(0.f, 0.f, 1.f);
-
-    triangle->set_vertices(triVerts);
-
-    add_render_object(RenderObject { .mesh = triangle, .transform = std::make_shared<Transform>(glm::vec3(0.0f, 0.0f, 0.0f)) });
-
     m_camera = std::make_tuple<Camera, Transform>(Camera(), Transform(glm::vec3(0.0f, 0.0f, -2.0f)));
 }
 
@@ -495,7 +442,7 @@ void Renderer::create_descriptors()
             sizeof(GPUCameraData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_renderData.sceneData[i] = create_buffer(std::make_shared<VmaAllocator>(m_renderData.allocator),
-            MAX_OBJECTS * sizeof(glm::mat4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+            ECS::MAX_ENTITIES * sizeof(glm::mat4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         m_cleanupQueue.push_front([this, i]() {
             vmaDestroyBuffer(m_renderData.allocator, m_renderData.cameraData[i].buffer, m_renderData.cameraData[i].allocation);
@@ -526,7 +473,7 @@ void Renderer::create_descriptors()
         VkDescriptorBufferInfo sceneBufInfo {};
         sceneBufInfo.buffer = m_renderData.sceneData[i].buffer;
         sceneBufInfo.offset = 0;
-        sceneBufInfo.range = MAX_OBJECTS * sizeof(glm::mat4);
+        sceneBufInfo.range = ECS::MAX_ENTITIES * sizeof(glm::mat4);
 
         VkWriteDescriptorSet sceneSetWrite {};
         sceneSetWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -785,23 +732,6 @@ void Renderer::recreate_swapchain()
     create_command_buffers();
 }
 
-void Renderer::record_commands(VkCommandBuffer cmd)
-{
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderData.pipeline);
-
-    for (RenderObject& r : m_renderObjects) {
-        if (r.mesh != nullptr) {
-            if (r.mesh->m_needsUpload) {
-                upload_mesh(*r.mesh);
-            }
-            glm::mat4 view = std::get<1>(m_camera).getTransform();
-            glm::mat4 projection = std::get<0>(m_camera).getProjMatrix(m_renderData.windowSize.width, m_renderData.windowSize.height);
-
-            r.record_draw_commands(cmd, m_renderData, view, projection);
-        }
-    }
-}
-
 void Renderer::upload_mesh(Mesh& mesh)
 {
     if (mesh.m_buffer.inUse) {
@@ -828,19 +758,63 @@ void Renderer::upload_mesh(Mesh& mesh)
     mesh.m_needsUpload = false;
 }
 
-void Renderer::add_render_object(RenderObject&& renderObject)
+void Renderer::record_commands(VkCommandBuffer cmd)
 {
-    renderObject.index = m_renderObjects.size();
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderData.pipeline);
 
-    if (renderObject.mesh != nullptr && renderObject.mesh->m_vertices.size() != 0) {
-        upload_mesh(*renderObject.mesh);
+    m_em.each_component<Mesh>([this, cmd](ECS::Entity& e, Mesh* m) {
+        record_entity_commands(cmd, e);
+    });
+}
+
+void Renderer::record_entity_commands(VkCommandBuffer cmd, ECS::Entity& e)
+{
+    if (!e.get_component<Mesh>().has_value()) {
+        throw std::runtime_error("Attempted to render entity with no renderable components");
     }
 
-    m_renderObjects.push_back(renderObject);
+    Mesh* mesh = e.get_component<Mesh>().value();
 
-    m_cleanupQueue.push_front([renderObject]() {
-        if (renderObject.mesh != nullptr) {
-            renderObject.mesh->cleanup();
-        }
-    });
+    if (mesh->getVertices().size() == 0) {
+        return;
+    }
+
+    if (mesh->m_needsUpload) {
+        upload_mesh(*mesh);
+    }
+
+    glm::mat4 view = std::get<1>(m_camera).getTransform();
+    glm::mat4 projection = std::get<0>(m_camera).getProjMatrix(m_renderData.windowSize.width, m_renderData.windowSize.height);
+
+    glm::mat4 model(1.0f);
+    Transform* t = e.get_component<Transform>().value();
+    if (e.get_component<Transform>().has_value()) {
+        model = e.get_component<Transform>().value()->getTransform();
+    }
+
+    GPUCameraData camData;
+    camData.proj = projection;
+    camData.view = view;
+
+    void* data;
+    vmaMapMemory(m_renderData.allocator, m_renderData.cameraData[m_renderData.frameIndex].allocation, &data);
+    memcpy(data, &camData, sizeof(GPUCameraData));
+    vmaUnmapMemory(m_renderData.allocator, m_renderData.cameraData[m_renderData.frameIndex].allocation);
+
+    vmaMapMemory(m_renderData.allocator, m_renderData.sceneData[m_renderData.frameIndex].allocation, &data);
+    data = (void*)((char*)data + e.get_eid() * sizeof(glm::mat4));
+    memcpy(data, &model, sizeof(glm::mat4));
+    vmaUnmapMemory(m_renderData.allocator, m_renderData.sceneData[m_renderData.frameIndex].allocation);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, m_renderData.pipelineLayout,
+        0, 1, &m_renderData.globalDescriptor[m_renderData.frameIndex], 0, nullptr);
+
+    MeshPushConstants constants;
+    constants.index = e.get_eid();
+
+    vkCmdPushConstants(cmd, m_renderData.pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(MeshPushConstants), &constants);
+
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers(cmd, 0, 1, &mesh->m_buffer.buffer, &offset);
+    vkCmdDraw(cmd, mesh->m_vertices.size(), 1, 0, 0);
 }

@@ -36,7 +36,7 @@ VertexInputDescription Vertex::get_vertex_description()
     return description;
 }
 
-std::vector<Vertex> Mesh::getVertices()
+const std::vector<Vertex>& Mesh::getVertices()
 {
     return m_vertices;
 }

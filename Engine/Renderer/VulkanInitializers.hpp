@@ -4,7 +4,7 @@
 #include <ThirdParty/vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
-#include <VulkanTypes.hpp>
+#include <Renderer/VulkanTypes.hpp>
 
 VkImageCreateInfo image_create_info(VkFormat format, VkImageUsageFlags usageFlags, VkExtent3D extent);
 

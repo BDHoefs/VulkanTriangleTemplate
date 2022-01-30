@@ -12,6 +12,7 @@
 #include <vulkan/vulkan.h>
 
 #include <Camera.hpp>
+#include <ECS/ECS.hpp>
 #include <Mesh.hpp>
 #include <Transform.hpp>
 
@@ -64,17 +65,7 @@ struct RenderData {
     size_t frameNumber = 0;
 };
 
-struct RenderObject {
-    std::shared_ptr<Mesh> mesh = nullptr;
-    std::shared_ptr<Transform> transform = nullptr;
-
-    void record_draw_commands(VkCommandBuffer cmd, RenderData& renderData, glm::mat4 view, glm::mat4 projection);
-
-    uint32_t index = 0;
-};
-
 const int MAX_FRAMES_IN_FLIGHT = 2;
-const int MAX_OBJECTS = 10000;
 
 class Renderer {
 public:
@@ -106,16 +97,16 @@ private:
 
     void recreate_swapchain();
 
-    void record_commands(VkCommandBuffer cmd);
-
     void upload_mesh(Mesh& m);
 
-    void add_render_object(RenderObject&& renderObject);
+    void record_commands(VkCommandBuffer cmd);
+    void record_entity_commands(VkCommandBuffer cmd, ECS::Entity& e);
 
 private:
     bool m_initialized = false;
 
-    std::vector<RenderObject> m_renderObjects;
+    ECS::EntityManager m_em;
+
     std::tuple<Camera, Transform> m_camera;
 
     RenderData m_renderData;
