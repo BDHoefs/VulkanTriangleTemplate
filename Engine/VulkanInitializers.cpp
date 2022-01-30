@@ -65,7 +65,7 @@ AllocatedBuffer create_buffer(std::shared_ptr<VmaAllocator> allocator, size_t al
     bufferInfo.usage = usage;
 
     VmaAllocationCreateInfo vmaAllocInfo {};
-    vmaAllocInfo.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
+    vmaAllocInfo.usage = memoryUsage;
 
     AllocatedBuffer newBuffer;
 
