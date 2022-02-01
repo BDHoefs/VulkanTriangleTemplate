@@ -1,5 +1,8 @@
 #include "Mesh.hpp"
 
+#include <Renderer/Renderer.hpp>
+#include <Renderer/VulkanInitializers.hpp>
+
 VertexInputDescription Vertex::get_vertex_description()
 {
     VertexInputDescription description;
@@ -44,7 +47,7 @@ const std::vector<Vertex>& Mesh::getVertices()
 void Mesh::set_vertices(std::vector<Vertex> vertices)
 {
     m_vertices = vertices;
-    m_needsUpload = true;
+    upload();
 }
 
 void Mesh::cleanup()
@@ -52,4 +55,28 @@ void Mesh::cleanup()
     if (m_buffer.inUse) {
         vmaDestroyBuffer(*m_buffer.allocator, m_buffer.buffer, m_buffer.allocation);
     }
+}
+
+void Mesh::upload()
+{
+    if (m_buffer.inUse) {
+        vmaDestroyBuffer(m_globalData->allocator, m_buffer.buffer, m_buffer.allocation);
+    }
+
+    m_buffer = create_buffer(
+        &m_globalData->allocator,
+        m_vertices.size() * sizeof(Vertex),
+        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        VMA_MEMORY_USAGE_CPU_TO_GPU);
+
+    void* data;
+
+    vmaMapMemory(m_globalData->allocator, m_buffer.allocation, &data);
+
+    memcpy(data, m_vertices.data(), m_vertices.size() * sizeof(Vertex));
+
+    vmaUnmapMemory(m_globalData->allocator, m_buffer.allocation);
+
+    m_buffer.allocator = &m_globalData->allocator;
+    m_buffer.inUse = true;
 }

@@ -7,7 +7,7 @@ struct AllocatedBuffer {
     VkBuffer buffer {};
     VmaAllocation allocation {};
 
-    std::shared_ptr<VmaAllocator> allocator = nullptr;
+    VmaAllocator* allocator;
     bool inUse = false;
 };
 

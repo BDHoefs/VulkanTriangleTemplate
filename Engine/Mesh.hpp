@@ -23,19 +23,28 @@ struct Vertex {
     static VertexInputDescription get_vertex_description();
 };
 
+class GlobalRenderContext;
+
 class Mesh {
 public:
+    Mesh(std::shared_ptr<GlobalRenderContext> globalData)
+        : m_globalData(globalData)
+    {
+    }
+
     const std::vector<Vertex>& getVertices();
     void set_vertices(std::vector<Vertex> vertices);
 
     void cleanup();
 
 private:
-    bool m_needsUpload = false;
+    void upload();
+
+    std::shared_ptr<GlobalRenderContext> m_globalData;
 
     std::vector<Vertex> m_vertices;
 
     AllocatedBuffer m_buffer;
-    friend class Renderer;
+    friend class PresentPass;
     friend struct RenderObject;
 };

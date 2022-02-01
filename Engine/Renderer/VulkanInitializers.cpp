@@ -55,7 +55,7 @@ VkPipelineDepthStencilStateCreateInfo depth_stencil_create_info(bool depthTest, 
     return info;
 }
 
-AllocatedBuffer create_buffer(std::shared_ptr<VmaAllocator> allocator, size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
+AllocatedBuffer create_buffer(VmaAllocator* allocator, size_t allocSize, VkBufferUsageFlags usage, VmaMemoryUsage memoryUsage)
 {
     VkBufferCreateInfo bufferInfo {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;

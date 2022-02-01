@@ -35,7 +35,7 @@ int main()
         em.add_system<MeshRotate>();
 
         Entity triangle = em.add_entity();
-        triangle.add_component<Mesh>();
+        triangle.add_component<Mesh>(renderer.get_global_data());
         Mesh* triMesh = triangle.get_component<Mesh>().value();
 
         std::vector<Vertex> triVerts(3);
